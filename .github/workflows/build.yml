@@ -1,4 +1,4 @@
-name: Build EXE
+name: Build and Release
 
 on:
   push:
@@ -25,15 +25,10 @@ jobs:
         run: |
           pyinstaller --onefile --name frp-monitor __main__.py
 
-      - name: Build frp-monitor-web.exe
-        run: |
-          pyinstaller --onefile --name frp-monitor-web cli/web_dashboard.py
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: exe-files
-          path: |
-            dist/frp-monitor.exe
-            dist/frp-monitor-web.exe
-          retention-days: 30
+          files: dist/frp-monitor.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
