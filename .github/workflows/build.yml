@@ -1,0 +1,39 @@
+name: Build EXE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install aiohttp pyinstaller
+
+      - name: Build frp-monitor.exe
+        run: |
+          pyinstaller --onefile --name frp-monitor __main__.py
+
+      - name: Build frp-monitor-web.exe
+        run: |
+          pyinstaller --onefile --name frp-monitor-web cli/web_dashboard.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: exe-files
+          path: |
+            dist/frp-monitor.exe
+            dist/frp-monitor-web.exe
+          retention-days: 30

@@ -1,0 +1,151 @@
+# ============================================
+# FRP Monitor - systemd 服务模板
+# ============================================
+#
+# 安装步骤：
+#   1. 复制此文件到 /etc/systemd/system/frp-monitor.service
+#   2. 编辑 ExecStart 路径和模式 (server/client)
+#   3. 运行: sudo systemctl daemon-reload
+#   4. 运行: sudo systemctl enable frp-monitor
+#   5. 运行: sudo systemctl start frp-monitor
+#
+# 管理命令：
+#   sudo systemctl start frp-monitor    # 启动服务
+#   sudo systemctl stop frp-monitor     # 停止服务
+#   sudo systemctl restart frp-monitor  # 重启服务
+#   sudo systemctl status frp-monitor   # 查看状态
+#   sudo journalctl -u frp-monitor -f   # 查看日志
+#
+# ============================================
+
+[Unit]
+Description=FRP Monitor Service
+Documentation=https://github.com/yourusername/frp-monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# 运行用户和组（建议创建专用用户）
+User=frp-monitor
+Group=frp-monitor
+
+# 工作目录
+WorkingDirectory=/var/lib/frp-monitor
+
+# ============================================
+# 启动命令配置 - 选择以下其中一种模式
+# ============================================
+
+# ---- Server 模式（默认）----
+ExecStart=/usr/local/bin/frp-monitor server
+
+# ---- Client 模式（取消注释并注释掉上面的 server 配置）----
+# ExecStart=/usr/local/bin/frp-monitor client --name my-tunnel --port 8080
+
+# ============================================
+# 重启配置
+# ============================================
+
+# 服务异常退出时自动重启
+Restart=on-failure
+
+# 重启间隔（秒）
+RestartSec=5
+
+# 最大重启次数（在 60 秒内）
+StartLimitInterval=60
+StartLimitBurst=3
+
+# 优雅停止超时时间
+TimeoutStopSec=30
+
+# ============================================
+# 日志配置
+# ============================================
+
+# 标准输出和错误输出到 journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=frp-monitor
+
+# ============================================
+# 安全加固配置
+# ============================================
+
+# 禁止获取新权限
+NoNewPrivileges=true
+
+# 私有临时目录
+PrivateTmp=true
+
+# 保护系统目录
+ProtectSystem=strict
+
+# 保护主目录
+ProtectHome=true
+
+# 允许读写的路径
+ReadWritePaths=/var/lib/frp-monitor
+
+# 保护内核日志
+ProtectKernelLogs=true
+
+# 保护控制组
+ProtectControlGroups=true
+
+# 保护内核模块
+ProtectKernelModules=true
+
+# 保护主机名
+ProtectHostname=true
+
+# 保护时钟
+ProtectClock=true
+
+# 限制地址族
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# 限制命名空间
+RestrictNamespaces=true
+
+# 限制实时调度
+RestrictRealtime=true
+
+# 限制 SUID/SGID 提升
+RestrictSUIDSGID=true
+
+# 锁定内存限制
+LimitMEMLOCK=0
+
+# 文件描述符限制
+LimitNOFILE=65536
+
+# 进程数限制
+LimitNPROC=4096
+
+# 内存限制（可选，根据实际需求调整）
+# MemoryMax=512M
+
+# ============================================
+# 环境变量配置（可选）
+# ============================================
+
+# Server 模式环境变量
+Environment="FRP_MONITOR_PORT=8400"
+Environment="FRP_MONITOR_HTTP_PORT=8401"
+Environment="FRP_MONITOR_DB_PATH=/var/lib/frp-monitor/frp-monitor.db"
+
+# Client 模式环境变量（取消注释以使用）
+# Environment="FRP_MONITOR_SERVER=localhost:8400"
+
+# 时区设置
+Environment="TZ=Asia/Shanghai"
+
+# ============================================
+# 安装配置
+# ============================================
+
+[Install]
+WantedBy=multi-user.target

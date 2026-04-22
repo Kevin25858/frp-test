@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRP Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #0f3460;
+            --bg-hover: #1a4a7a;
+            --text-primary: #eaeaea;
+            --text-secondary: #a0a0a0;
+            --accent: #e94560;
+            --success: #00d9ff;
+            --warning: #ffc107;
+            --danger: #ff4757;
+            --border: #2a2a4a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header h1::before {
+            content: '●';
+            color: var(--accent);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-card);
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .status-dot.offline {
+            background: var(--danger);
+        }
+
+        /* Main Layout */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            gap: 1rem;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 1024px) {
+            .main-container {
+                flex-direction: row;
+            }
+        }
+
+        /* Client List Section */
+        .clients-section {
+            flex: 0 0 auto;
+        }
+
+        @media (min-width: 1024px) {
+            .clients-section {
+                flex: 0 0 350px;
+            }
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .refresh-indicator {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .clients-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .client-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .client-card:hover {
+            background: var(--bg-hover);
+            transform: translateX(4px);
+        }
+
+        .client-card.active {
+            border-color: var(--accent);
+        }
+
+        .client-card.offline {
+            opacity: 0.6;
+        }
+
+        .client-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .client-name {
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .client-status {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .client-status.online {
+            background: rgba(0, 217, 255, 0.2);
+            color: var(--success);
+        }
+
+        .client-status.offline {
+            background: rgba(255, 71, 87, 0.2);
+            color: var(--danger);
+        }
+
+        .client-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .metric-item {
+            background: var(--bg-secondary);
+            padding: 0.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 0.2rem;
+        }
+
+        .metric-value.good {
+            color: var(--success);
+        }
+
+        .metric-value.warning {
+            color: var(--warning);
+        }
+
+        .metric-value.danger {
+            color: var(--danger);
+        }
+
+        /* Charts Section */
+        .charts-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1rem;
+            flex: 1;
+            min-height: 250px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .chart-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .chart-canvas {
+            width: 100%;
+            height: calc(100% - 50px);
+            min-height: 180px;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-secondary);
+            padding: 0.75rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .footer-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .footer-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .footer-stat {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--bg-card);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-card);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-hover);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>FRP Monitor</h1>
+        <div class="status-badge">
+            <span class="status-dot" id="serverStatus"></span>
+            <span id="serverStatusText">连接中...</span>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <section class="clients-section">
+            <div class="section-title">
+                <span>客户端列表</span>
+                <span class="refresh-indicator">每 3 秒刷新</span>
+            </div>
+            <div class="clients-list" id="clientsList">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📡</div>
+                    <div>正在加载客户端...</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="charts-section">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">RTT 趋势 (ms)</span>
+                    <span class="chart-value" id="rttValue">-</span>
+                </div>
+                <canvas class="chart-canvas" id="rttChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">丢包率趋势 (%)</span>
+                    <span class="chart-value" id="lossValue">-</span>
+                </div>
+                <canvas class="chart-canvas" id="lossChart"></canvas>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-info">
+            FRP Monitor Dashboard v1.0
+        </div>
+        <div class="footer-stats">
+            <div class="footer-stat">
+                <span>在线:</span>
+                <span id="onlineCount">0</span>
+            </div>
+            <div class="footer-stat">
+                <span>离线:</span>
+                <span id="offlineCount">0</span>
+            </div>
+            <div class="footer-stat">
+                <span>总计:</span>
+                <span id="totalCount">0</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 全局状态
+        const state = {
+            clients: [],
+            selectedClient: null,
+            historyData: new Map(), // clientName -> {rtt: [], loss: [], timestamps: []}
+            maxDataPoints: 60
+        };
+
+        // 图表实例
+        const charts = {
+            rtt: null,
+            loss: null
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            fetchClients();
+            setInterval(fetchClients, 3000);
+        });
+
+        // 初始化图表
+        function initCharts() {
+            const rttCanvas = document.getElementById('rttChart');
+            const lossCanvas = document.getElementById('lossChart');
+
+            charts.rtt = new LineChart(rttCanvas, {
+                color: '#00d9ff',
+                fillColor: 'rgba(0, 217, 255, 0.1)',
+                maxValue: 500,
+                unit: 'ms'
+            });
+
+            charts.loss = new LineChart(lossCanvas, {
+                color: '#e94560',
+                fillColor: 'rgba(233, 69, 96, 0.1)',
+                maxValue: 10,
+                unit: '%'
+            });
+
+            // 响应式重绘
+            window.addEventListener('resize', () => {
+                charts.rtt.resize();
+                charts.loss.resize();
+            });
+        }
+
+        // 获取客户端列表
+        async function fetchClients() {
+            try {
+                const response = await fetch('/api/clients');
+                if (!response.ok) throw new Error('Failed to fetch');
+                
+                const clients = await response.json();
+                state.clients = clients;
+                
+                updateServerStatus(true);
+                updateClientsList(clients);
+                updateFooterStats(clients);
+                
+                // 更新选中客户端的图表
+                if (state.selectedClient) {
+                    const client = clients.find(c => c.name === state.selectedClient);
+                    if (client) {
+                        updateClientHistory(client);
+                        updateCharts(client.name);
+                    }
+                } else if (clients.length > 0) {
+                    // 默认选择第一个在线客户端
+                    const onlineClient = clients.find(c => c.status === 'online') || clients[0];
+                    selectClient(onlineClient.name);
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                updateServerStatus(false);
+            }
+        }
+
+        // 更新服务器状态
+        function updateServerStatus(connected) {
+            const dot = document.getElementById('serverStatus');
+            const text = document.getElementById('serverStatusText');
+            
+            if (connected) {
+                dot.classList.remove('offline');
+                text.textContent = '已连接';
+            } else {
+                dot.classList.add('offline');
+                text.textContent = '已断开';
+            }
+        }
+
+        // 更新客户端列表 UI
+        function updateClientsList(clients) {
+            const container = document.getElementById('clientsList');
+            
+            if (clients.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📡</div>
+                        <div>暂无客户端连接</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = clients.map(client => {
+                const rttClass = getRttClass(client.rtt_ms);
+                const lossClass = getLossClass(client.loss_rate);
+                const isActive = state.selectedClient === client.name;
+                const isOffline = client.status === 'offline';
+
+                return `
+                    <div class="client-card ${isActive ? 'active' : ''} ${isOffline ? 'offline' : ''}" 
+                         onclick="selectClient('${client.name}')">
+                        <div class="client-header">
+                            <div class="client-name">
+                                ${client.name}
+                            </div>
+                            <span class="client-status ${client.status}">
+                                ${client.status === 'online' ? '在线' : '离线'}
+                            </span>
+                        </div>
+                        <div class="client-metrics">
+                            <div class="metric-item">
+                                <div class="metric-label">RTT</div>
+                                <div class="metric-value ${rttClass}">
+                                    ${client.rtt_ms ? client.rtt_ms.toFixed(1) : '-'} ms
+                                </div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">丢包率</div>
+                                <div class="metric-value ${lossClass}">
+                                    ${(client.loss_rate * 100).toFixed(1)}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 获取 RTT 样式类
+        function getRttClass(rtt) {
+            if (!rtt || rtt <= 0) return '';
+            if (rtt > 500) return 'danger';
+            if (rtt > 100) return 'warning';
+            return 'good';
+        }
+
+        // 获取丢包率样式类
+        function getLossClass(loss) {
+            if (!loss || loss <= 0) return 'good';
+            if (loss > 0.05) return 'danger';
+            if (loss > 0.01) return 'warning';
+            return 'good';
+        }
+
+        // 选择客户端
+        function selectClient(name) {
+            state.selectedClient = name;
+            updateClientsList(state.clients);
+            updateCharts(name);
+        }
+
+        // 更新客户端历史数据
+        function updateClientHistory(client) {
+            if (!state.historyData.has(client.name)) {
+                state.historyData.set(client.name, {
+                    rtt: [],
+                    loss: [],
+                    timestamps: []
+                });
+            }
+
+            const data = state.historyData.get(client.name);
+            const now = new Date();
+
+            data.rtt.push(client.rtt_ms || 0);
+            data.loss.push((client.loss_rate || 0) * 100);
+            data.timestamps.push(now);
+
+            // 只保留最近的数据点
+            if (data.rtt.length > state.maxDataPoints) {
+                data.rtt.shift();
+                data.loss.shift();
+                data.timestamps.shift();
+            }
+        }
+
+        // 更新图表
+        function updateCharts(clientName) {
+            const data = state.historyData.get(clientName);
+            if (!data || data.rtt.length === 0) return;
+
+            const latestRtt = data.rtt[data.rtt.length - 1];
+            const latestLoss = data.loss[data.loss.length - 1];
+
+            // 更新数值显示
+            const rttEl = document.getElementById('rttValue');
+            const lossEl = document.getElementById('lossValue');
+
+            rttEl.textContent = latestRtt ? `${latestRtt.toFixed(1)} ms` : '-';
+            lossEl.textContent = `${latestLoss.toFixed(1)}%`;
+
+            rttEl.className = 'chart-value ' + getRttClass(latestRtt);
+            lossEl.className = 'chart-value ' + getLossClass(latestLoss / 100);
+
+            // 更新图表
+            charts.rtt.setData(data.rtt);
+            charts.loss.setData(data.loss);
+        }
+
+        // 更新底部统计
+        function updateFooterStats(clients) {
+            const online = clients.filter(c => c.status === 'online').length;
+            const offline = clients.filter(c => c.status === 'offline').length;
+
+            document.getElementById('onlineCount').textContent = online;
+            document.getElementById('offlineCount').textContent = offline;
+            document.getElementById('totalCount').textContent = clients.length;
+        }
+
+        // 折线图类
+        class LineChart {
+            constructor(canvas, options = {}) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.data = [];
+                this.options = {
+                    color: '#00d9ff',
+                    fillColor: 'rgba(0, 217, 255, 0.1)',
+                    maxValue: 100,
+                    unit: '',
+                    padding: 10,
+                    ...options
+                };
+
+                this.resize();
+            }
+
+            resize() {
+                const rect = this.canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+
+                this.canvas.width = rect.width * dpr;
+                this.canvas.height = rect.height * dpr;
+                this.ctx.scale(dpr, dpr);
+
+                this.width = rect.width;
+                this.height = rect.height;
+
+                this.draw();
+            }
+
+            setData(data) {
+                this.data = data;
+                this.draw();
+            }
+
+            draw() {
+                const { ctx, width, height, options, data } = this;
+                const { padding, color, fillColor, maxValue } = options;
+
+                // 清空画布
+                ctx.clearRect(0, 0, width, height);
+
+                if (data.length < 2) {
+                    this.drawEmptyState();
+                    return;
+                }
+
+                const chartWidth = width - padding * 2;
+                const chartHeight = height - padding * 2;
+
+                // 计算数据范围
+                const max = Math.max(...data, maxValue * 0.1);
+                const displayMax = Math.max(max, maxValue);
+
+                // 绘制网格线
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 1;
+
+                for (let i = 0; i <= 4; i++) {
+                    const y = padding + (chartHeight / 4) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(padding, y);
+                    ctx.lineTo(width - padding, y);
+                    ctx.stroke();
+                }
+
+                // 绘制折线
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+
+                const stepX = chartWidth / (data.length - 1);
+
+                data.forEach((value, index) => {
+                    const x = padding + stepX * index;
+                    const y = padding + chartHeight - (value / displayMax) * chartHeight;
+
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        // 使用贝塞尔曲线平滑连接
+                        const prevX = padding + stepX * (index - 1);
+                        const prevY = padding + chartHeight - (data[index - 1] / displayMax) * chartHeight;
+                        const cpX = (prevX + x) / 2;
+                        ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y);
+                    }
+                });
+
+                ctx.stroke();
+
+                // 绘制填充区域
+                ctx.lineTo(width - padding, height - padding);
+                ctx.lineTo(padding, height - padding);
+                ctx.closePath();
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+
+                // 绘制数据点
+                data.forEach((value, index) => {
+                    const x = padding + stepX * index;
+                    const y = padding + chartHeight - (value / displayMax) * chartHeight;
+
+                    // 只显示部分点以避免过于密集
+                    if (index % Math.ceil(data.length / 10) === 0 || index === data.length - 1) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, 3, 0, Math.PI * 2);
+                        ctx.fillStyle = color;
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.arc(x, y, 5, 0, Math.PI * 2);
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                });
+
+                // 绘制 Y 轴标签
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'right';
+
+                for (let i = 0; i <= 4; i++) {
+                    const value = (displayMax / 4) * (4 - i);
+                    const y = padding + (chartHeight / 4) * i + 3;
+                    ctx.fillText(value.toFixed(0), padding - 5, y);
+                }
+            }
+
+            drawEmptyState() {
+                const { ctx, width, height } = this;
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('等待数据...', width / 2, height / 2);
+            }
+        }
+    </script>
+</body>
+</html>
