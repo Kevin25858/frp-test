@@ -18,27 +18,16 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install aiohttp pyinstaller
-
-      - name: Get version
-        id: version
-        run: echo "VERSION=v$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
-
-      - name: Create Tag
-        run: git tag ${{ steps.version.outputs.VERSION }}
-
-      - name: Push Tag
-        run: git push origin ${{ steps.version.outputs.VERSION }}
+        run: pip install aiohttp pyinstaller
 
       - name: Build frp-monitor.exe
-        run: |
-          pyinstaller --onefile --name frp-monitor __main__.py
+        run: pyinstaller --onefile --name frp-monitor __main__.py
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: dist/frp-monitor.exe
+          tag_name: v1.0.0
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
