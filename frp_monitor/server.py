@@ -93,12 +93,23 @@ class Server:
         app.router.add_get("/api/metrics/{name}", self._handle_metrics)
         return app
 
-    async def _handle_index(self, request: web.Request) -> web.Response:
+async def _handle_index(self, request: web.Request) -> web.Response:
         """Serve web UI"""
         import os
-        index_path = os.path.join(os.path.dirname(__file__), "web", "static", "index.html")
-        if os.path.exists(index_path):
-            return web.FileResponse(index_path)
+        import sys
+
+        # Try multiple possible paths for bundled exe
+        possible_paths = [
+            os.path.join(os.path.dirname(__file__), "web", "static", "index.html"),
+            os.path.join(os.path.dirname(sys.executable), "frp_monitor", "web", "static", "index.html"),
+            os.path.join(os.path.dirname(sys.executable), "web", "static", "index.html"),
+            os.path.join(os.path.dirname(__file__), "..", "web", "static", "index.html"),
+        ]
+
+        for index_path in possible_paths:
+            if os.path.exists(index_path):
+                return web.FileResponse(index_path)
+
         return web.Response(text="FRP Monitor", content_type="text/html")
 
     async def _handle_health(self, request: web.Request) -> web.Response:

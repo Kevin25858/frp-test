@@ -24,7 +24,11 @@ jobs:
         run: pip install aiohttp pyinstaller
 
       - name: Build frp-monitor.exe
-        run: pyinstaller --onefile --name frp-monitor __main__.py
+        run: |
+          pyinstaller --onefile ^
+            --name frp-monitor ^
+            --add-data "frp_monitor/web/static;frp_monitor/web/static" ^
+            __main__.py
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
