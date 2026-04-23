@@ -21,6 +21,16 @@ jobs:
         run: |
           pip install aiohttp pyinstaller
 
+      - name: Get version
+        id: version
+        run: echo "VERSION=v$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Create Tag
+        run: git tag ${{ steps.version.outputs.VERSION }}
+
+      - name: Push Tag
+        run: git push origin ${{ steps.version.outputs.VERSION }}
+
       - name: Build frp-monitor.exe
         run: |
           pyinstaller --onefile --name frp-monitor __main__.py
