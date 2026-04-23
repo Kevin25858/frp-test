@@ -5,7 +5,7 @@ import os
 import webbrowser
 import threading
 import time
-import argparse
+import asyncio
 
 sys.path.insert(0, os.getcwd())
 
@@ -23,19 +23,17 @@ async def run_server(port=8080, http_port=8081, db_path="frp-monitor.db"):
     server = Server(port=port, http_port=http_port, db_path=db_path)
     await server.start()
     print(f"服务器已启动，访问 http://localhost:{http_port}")
-    return server
+    print("按 Ctrl+C 停止服务器")
+
+    # 创建一个永远不完成的 future 来保持服务器运行
+    try:
+        await asyncio.Future()
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        print("\n正在停止服务器...")
+        await server.stop()
 
 
 def main():
-    import asyncio
-
-    # 检查参数
-    if len(sys.argv) > 1:
-        # 有参数，导入 cli.main 处理
-        from cli.main import main as cli_main
-        cli_main()
-        return
-
     # 无参数，自动启动服务器并打开浏览器
     print("启动 FRP Monitor 服务器...")
 
@@ -47,8 +45,15 @@ def main():
     try:
         asyncio.run(run_server())
     except KeyboardInterrupt:
-        print("\n服务器已停止")
+        pass
+
+    print("服务器已停止")
 
 
 if __name__ == "__main__":
-    main()
+    # 检查是否有命令行参数
+    if len(sys.argv) > 1:
+        from cli.main import main as cli_main
+        cli_main()
+    else:
+        main()
